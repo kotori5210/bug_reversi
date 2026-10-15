@@ -52,6 +52,7 @@ module ReversiMethods
     turn_succeed = false
     Position::DIRECTIONS.each do |direction|
       next_pos = pos.next_position(direction)
+      next if next_pos.out_of_board? || next_pos.stone_color(board) != (stone_color == WHITE_STONE ? BLACK_STONE : WHITE_STONE)
       turn_succeed = true if turn(copied_board, next_pos, stone_color, direction)
     end
 
@@ -60,16 +61,13 @@ module ReversiMethods
     turn_succeed
   end
 
-  # デバッガで突き止めたバグを修正：引数に 1歩目判定フラグ（first_step）を追加
-  def turn(board, target_pos, attack_stone_color, direction, first_step = true)
+  def turn(board, target_pos, attack_stone_color, direction)
     return false if target_pos.out_of_board?
+    return false if target_pos.stone_color(board) == attack_stone_color && board.flatten.count(attack_stone_color) == 2
     return false if target_pos.stone_color(board) == BLANK_CELL
-    # すぐ隣（1歩目）が自分の石なら、相手を挟めていないので false を返す
-    return !first_step if target_pos.stone_color(board) == attack_stone_color
 
     next_pos = target_pos.next_position(direction)
-    # 2歩目以降の呼び出しでは、末尾に false を渡してフラグを切り替える
-    if turn(board, next_pos, attack_stone_color, direction, false)
+    if (next_pos.stone_color(board) == attack_stone_color) || turn(board, next_pos, attack_stone_color, direction)
       board[target_pos.row][target_pos.col] = attack_stone_color
       true
     else
@@ -78,7 +76,7 @@ module ReversiMethods
   end
 
   def finished?(board)
-    (!placeable?(board, WHITE_STONE) && !placeable?(board, BLACK_STONE)) || count_stone(board, BLANK_CELL) == 0
+    !placeable?(board, WHITE_STONE) && !placeable?(board, BLACK_STONE)
   end
 
   def placeable?(board, attack_stone_color)
